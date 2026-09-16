@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ปฏิบัติการห้องแล็บ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0B1620;
+    --bg-1:#0F2027;
+    --panel:#122733;
+    --panel-line:#1E3A45;
+    --teal:#2DD4BF;
+    --teal-dim:#1B7A70;
+    --amber:#F0A93B;
+    --coral:#E8654F;
+    --ink:#E7F1EF;
+    --ink-dim:#8FA9AA;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'IBM Plex Sans Thai', sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 10%, rgba(45,212,191,0.08), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(240,169,59,0.06), transparent 45%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1));
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(45,212,191,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45,212,191,0.05) 1px, transparent 1px);
+    background-size:36px 36px;
+    pointer-events:none;
+    mask-image:radial-gradient(circle at 50% 30%, black, transparent 75%);
+  }
+  .stage{
+    width:100%;
+    max-width:640px;
+    position:relative;
+    z-index:1;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:18px;
+    padding:36px 32px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.6);
+    position:relative;
+  }
+  .card::before{
+    content:"";
+    position:absolute; top:14px; left:14px; right:14px; bottom:14px;
+    border:1px dashed rgba(143,169,170,0.18);
+    border-radius:12px;
+    pointer-events:none;
+  }
+
+  /* ---------- typography ---------- */
+  h1,h2{
+    font-family:'Space Grotesk', 'IBM Plex Sans Thai', sans-serif;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .kicker{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    color:var(--teal);
+    letter-spacing:0.06em;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .kicker::before{
+    content:"";
+    width:7px;height:7px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 8px var(--teal);
+  }
+  p{ line-height:1.7; color:var(--ink-dim); }
+
+  /* ---------- screens ---------- */
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  /* start screen */
+  #start h1{ font-size:30px; margin-bottom:14px; line-height:1.35; }
+  .topic-tags{
+    display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 26px;
+  }
+  .topic-tags span{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:999px;
+    border:1px solid var(--panel-line);
+    color:var(--ink-dim);
+  }
+  .rules{
+    background:rgba(45,212,191,0.05);
+    border:1px solid rgba(45,212,191,0.18);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:26px;
+    font-size:14px;
+  }
+  .rules li{ margin-bottom:6px; color:var(--ink-dim); }
+  .rules li b{ color:var(--ink); font-weight:600; }
+
+  button.primary{
+    font-family:'IBM Plex Sans Thai', sans-serif;
+    font-weight:600;
+    font-size:16px;
+    color:#06231F;
+    background:linear-gradient(180deg, #3FE0C9, var(--teal));
+    border:none;
+    padding:14px 28px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow:0 10px 24px -8px rgba(45,212,191,0.5);
+  }
+  button.primary:hover{ transform:translateY(-2px); box-shadow:0 14px 28px -8px rgba(45,212,191,0.65); }
+  button.primary:active{ transform:translateY(0); }
+
+  /* ---------- game screen ---------- */
+  .hud{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:22px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+  }
+  .lives{ display:flex; gap:6px; }
+  .lives .vial{
+    width:16px; height:22px;
+    border:1.5px solid var(--coral);
+    border-radius:2px 2px 8px 8px;
+    position:relative;
+    overflow:hidden;
+  }
+  .lives .vial::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:0; height:70%;
+    background:var(--coral);
+  }
+  .lives .vial.spent{ border-color:#3A4750; }
+  .lives .vial.spent::after{ background:transparent; }
+
+  .progress-track{
+    height:6px;
+    background:var(--panel-line);
+    border-radius:99px;
+    overflow:hidden;
+    margin-bottom:26px;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--teal-dim), var(--teal));
+    width:0%;
+    transition:width 0.35s ease;
+  }
+
+  .q-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--amber);
+    margin-bottom:8px;
+    text-transform:none;
+  }
+  .q-text{
+    font-size:19px;
+    font-weight:500;
+    color:var(--ink);
+    line-height:1.55;
+    margin-bottom:26px;
+  }
+
+  .items{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .item{
+    text-align:left;
+    background:#0E1F28;
+    border:1px solid var(--panel-line);
+    border-radius:12px;
+    padding:14px 16px;
+    color:var(--ink);
+    font-family:'IBM Plex Sans Thai', sans-serif;
+    font-size:15px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .item .tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    padding:2px 6px;
+    flex-shrink:0;
+  }
+  .item:hover:not(:disabled){
+    border-color:var(--teal-dim);
+    background:#102730;
+    transform:translateY(-1px);
+  }
+  .item:disabled{ cursor:default; }
+  .item.correct{
+    border-color:var(--teal);
+    background:rgba(45,212,191,0.14);
+  }
+  .item.wrong{
+    border-color:var(--coral);
+    background:rgba(232,101,79,0.12);
+  }
+
+  .feedback{
+    margin-top:18px;
+    font-size:14px;
+    min-height:20px;
+    color:var(--ink-dim);
+  }
+  .feedback.good{ color:var(--teal); }
+  .feedback.bad{ color:var(--coral); }
+
+  /* end screens */
+  .end-icon{
+    width:64px; height:64px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+    margin-bottom:20px;
+  }
+  #win .end-icon{ background:rgba(45,212,191,0.15); border:1px solid var(--teal); }
+  #lose .end-icon{ background:rgba(232,101,79,0.15); border:1px solid var(--coral); }
+
+  .stat-row{
+    display:flex;
+    gap:14px;
+    margin:22px 0 28px;
+  }
+  .stat{
+    flex:1;
+    background:#0E1F28;
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:14px;
+    text-align:center;
+  }
+  .stat .num{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:26px;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .stat .lbl{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    margin-top:4px;
+  }
+
+  button.ghost{
+    font-family:'IBM Plex Sans Thai', sans-serif;
+    font-weight:500;
+    font-size:15px;
+    color:var(--ink);
+    background:transparent;
+    border:1px solid var(--panel-line);
+    padding:12px 22px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:border-color 0.15s ease;
+  }
+  button.ghost:hover{ border-color:var(--teal-dim); }
+
+  @media (max-width:480px){
+    .card{ padding:26px 20px; }
+    .items{ grid-template-columns:1fr; }
+    #start h1{ font-size:24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="card">
+
+    <!-- START -->
+    <section id="start" class="screen active">
+      <div class="kicker">ห้องปฏิบัติการวิทยาศาสตร์ · ม.ปลาย</div>
+      <h1>ภารกิจกู้ห้องแล็บ:<br>เลือกให้ถูก ก่อนสารเคมีหมดเวลา</h1>
+      <p>ระบบของห้องแล็บขัดข้อง คุณต้องตอบคำถามวิทยาศาสตร์ระดับมัธยมปลายให้ถูกต้อง โดยเลือก "ไอเท็ม" ที่เป็นคำตอบจากชั้นวางของในแต่ละข้อ</p>
+      <div class="topic-tags">
+        <span>ฟิสิกส์</span><span>เคมี</span><span>ชีววิทยา</span>
+      </div>
+      <div class="rules">
+        <ul style="margin:0; padding-left:18px;">
+          <li>มีหลอดทดลองพลังงาน <b>3 หลอด</b> — ตอบผิด 1 ครั้ง เสีย 1 หลอด</li>
+          <li>หลอดหมดก่อนตอบครบ = <b>ห้องแล็บล่ม</b></li>
+          <li>ตอบครบทุกข้อโดยยังมีหลอดเหลือ = <b>กู้ห้องแล็บสำเร็จ</b></li>
+        </ul>
+      </div>
+      <button class="primary" onclick="startGame()">เริ่มภารกิจ</button>
+    </section>
+
+    <!-- GAME -->
+    <section id="game" class="screen">
+      <div class="hud">
+        <div class="lives" id="lives"></div>
+        <div id="scoreDisplay">คะแนน: 0</div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+      <div class="q-label" id="qTopic">ฟิสิกส์</div>
+      <div class="q-text" id="qText">คำถาม</div>
+
+      <div class="items" id="itemsWrap"></div>
+      <div class="feedback" id="feedback"></div>
+    </section>
+
+    <!-- WIN -->
+    <section id="win" class="screen">
+      <div class="end-icon">🧪</div>
+      <div class="kicker">ภารกิจสำเร็จ</div>
+      <h2 style="font-size:24px; margin-bottom:10px;">กู้ห้องแล็บสำเร็จ!</h2>
+      <p>คุณตอบคำถามครบทุกข้อ ห้องปฏิบัติการกลับมาทำงานได้ตามปกติแล้ว</p>
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="winScore">0</div><div class="lbl">คำตอบถูก</div></div>
+        <div class="stat"><div class="num" id="winLives">0</div><div class="lbl">หลอดที่เหลือ</div></div>
+      </div>
+      <button class="primary" onclick="startGame()">เล่นอีกครั้ง</button>
+    </section>
+
+    <!-- LOSE -->
+    <section id="lose" class="screen">
+      <div class="end-icon">⚠️</div>
+      <div class="kicker">ภารกิจล้มเหลว</div>
+      <h2 style="font-size:24px; margin-bottom:10px;">ห้องแล็บล่ม</h2>
+      <p>หลอดพลังงานหมดก่อนที่คุณจะแก้ไขระบบได้ครบ ลองตั้งสติแล้วเริ่มใหม่อีกครั้ง</p>
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="loseScore">0</div><div class="lbl">คำตอบถูก</div></div>
+        <div class="stat"><div class="num" id="loseQ">0</div><div class="lbl">ข้อที่ทำถึง</div></div>
+      </div>
+      <button class="primary" onclick="startGame()">ลองใหม่</button>
+    </section>
+
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  { topic:"ฟิสิกส์", text:"เมื่อแรงลัพธ์ที่กระทำต่อวัตถุมีค่าเป็นศูนย์ วัตถุนั้นจะอยู่ในสภาพใด?", options:["เร่งความเร็วขึ้นเรื่อย ๆ","สมดุล (นิ่งหรือเคลื่อนที่คงที่)","หมุนรอบตัวเอง","สลายตัวทันที"], correct:1 },
+  { topic:"เคมี", text:"ธาตุที่มีเลขอะตอมเท่ากับ 6 คือธาตุใด?", options:["ออกซิเจน (O)","ไนโตรเจน (N)","คาร์บอน (C)","ฮีเลียม (He)"], correct:2 },
+  { topic:"ชีววิทยา", text:"ออร์แกเนลล์ใดทำหน้าที่สร้างพลังงานในรูป ATP ให้เซลล์?", options:["ไรโบโซม","ไมโทคอนเดรีย","กอลจิบอดี","แวคิวโอล"], correct:1 },
+  { topic:"ฟิสิกส์", text:"หน่วยวัดพลังงานในระบบ SI คือหน่วยใด?", options:["นิวตัน (N)","วัตต์ (W)","จูล (J)","ปาสคาล (Pa)"], correct:2 },
+  { topic:"เคมี", text:"พันธะเคมีที่เกิดจากอะตอมใช้อิเล็กตรอนคู่ร่วมกันเรียกว่าอะไร?", options:["พันธะไอออนิก","พันธะโคเวเลนต์","พันธะโลหะ","พันธะไฮโดรเจน"], correct:1 },
+  { topic:"ชีววิทยา", text:"กระบวนการสังเคราะห์แสงของพืชเกิดขึ้นที่ออร์แกเนลล์ใด?", options:["คลอโรพลาสต์","ไมโทคอนเดรีย","นิวเคลียส","ไลโซโซม"], correct:0 },
+  { topic:"ฟิสิกส์", text:"กฎการเคลื่อนที่ข้อที่ 1 ของนิวตัน อธิบายเกี่ยวกับสมบัติใดของวัตถุ?", options:["ความหนาแน่น","ความเฉื่อย","ความยืดหยุ่น","ความจุความร้อน"], correct:1 },
+  { topic:"เคมี", text:"สารละลายที่มีค่า pH เท่ากับ 7 จัดเป็นสารประเภทใด?", options:["กรด","เบส","กลาง","สารออกซิไดซ์"], correct:2 },
+  { topic:"ชีววิทยา", text:"โครงสร้างของ DNA มีลักษณะเป็นแบบใด?", options:["เกลียวคู่ (double helix)","แผ่นเรียบเดี่ยว","ทรงกลม","สายตรงเส้นเดียว"], correct:0 },
+  { topic:"ฟิสิกส์", text:"ความเร่งเนื่องจากแรงโน้มถ่วงที่ผิวโลกมีค่าประมาณเท่าใด?", options:["3.0 m/s²","9.8 m/s²","15.0 m/s²","0.98 m/s²"], correct:1 },
+  { topic:"เคมี", text:"สารประกอบ H₂O ที่รู้จักกันทั่วไปคือสารใด?", options:["น้ำ","น้ำมัน","แอลกอฮอล์","น้ำส้มสายชู"], correct:0 },
+  { topic:"ชีววิทยา", text:"เซลล์ที่ไม่มีเยื่อหุ้มนิวเคลียสเรียกว่าเซลล์ประเภทใด?", options:["เซลล์ยูคาริโอต","เซลล์โพรคาริโอต","เซลล์ประสาท","เซลล์สืบพันธุ์"], correct:1 },
+  { topic:"ฟิสิกส์", text:"แสงเดินทางด้วยความเร็วสูงสุดในตัวกลางใด?", options:["น้ำ","แก้ว","สุญญากาศ","อากาศ"], correct:2 },
+  { topic:"เคมี", text:"ธาตุในหมู่ที่ 18 ของตารางธาตุเรียกว่ากลุ่มใด?", options:["โลหะแอลคาไล","แฮโลเจน","แก๊สเฉื่อย","โลหะทรานซิชัน"], correct:2 },
+  { topic:"ชีววิทยา", text:"การแบ่งเซลล์แบบใดที่ได้เซลล์ลูกซึ่งมีจำนวนโครโมโซมเท่ากับเซลล์แม่ทุกประการ?", options:["ไมโทซิส","ไมโอซิส","การปฏิสนธิ","การกลายพันธุ์"], correct:0 }
+];
+
+const MAX_LIVES = 3;
+let lives, score, currentIndex, order;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame(){
+  lives = MAX_LIVES;
+  score = 0;
+  currentIndex = 0;
+  order = shuffle(QUESTIONS.map((_,i)=>i));
+  renderLives();
+  showScreen('game');
+  loadQuestion();
+}
+
+function renderLives(){
+  const wrap = document.getElementById('lives');
+  wrap.innerHTML = '';
+  for(let i=0;i<MAX_LIVES;i++){
+    const v = document.createElement('div');
+    v.className = 'vial' + (i < MAX_LIVES - lives ? ' spent' : '');
+    wrap.appendChild(v);
+  }
+}
+
+function loadQuestion(){
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('scoreDisplay').textContent = 'คะแนน: ' + score;
+
+  const pct = (currentIndex / order.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  const q = QUESTIONS[order[currentIndex]];
+  document.getElementById('qTopic').textContent = q.topic + ' · ข้อ ' + (currentIndex+1) + '/' + order.length;
+  document.getElementById('qText').textContent = q.text;
+
+  const optOrder = shuffle(q.options.map((_,i)=>i));
+  const wrap = document.getElementById('itemsWrap');
+  wrap.innerHTML = '';
+  const tags = ['A','B','C','D'];
+  optOrder.forEach((origIdx, pos)=>{
+    const btn = document.createElement('button');
+    btn.className = 'item';
+    btn.innerHTML = '<span class="tag">'+tags[pos]+'</span><span>'+q.options[origIdx]+'</span>';
+    btn.onclick = ()=>selectAnswer(origIdx === q.correct, btn);
+    wrap.appendChild(btn);
+  });
+}
+
+function selectAnswer(isCorrect, btnEl){
+  const buttons = document.querySelectorAll('.item');
+  buttons.forEach(b=>b.disabled = true);
+  const fb = document.getElementById('feedback');
+
+  if(isCorrect){
+    btnEl.classList.add('correct');
+    score++;
+    fb.textContent = 'ถูกต้อง — ระบบยอมรับคำตอบนี้';
+    fb.classList.add('good');
+  } else {
+    btnEl.classList.add('wrong');
+    lives--;
+    renderLives();
+    fb.textContent = 'ไม่ถูกต้อง — สูญเสียหลอดพลังงาน 1 หลอด';
+    fb.classList.add('bad');
+  }
+
+  setTimeout(()=>{
+    if(lives <= 0){
+      endLose();
+      return;
+    }
+    currentIndex++;
+    if(currentIndex >= order.length){
+      endWin();
+      return;
+    }
+    loadQuestion();
+  }, 900);
+}
+
+function endWin(){
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('winScore').textContent = score;
+  document.getElementById('winLives').textContent = lives;
+  showScreen('win');
+}
+
+function endLose(){
+  document.getElementById('loseScore').textContent = score;
+  document.getElementById('loseQ').textContent = (currentIndex+1) + ' / ' + order.length;
+  showScreen('lose');
+}
+</script>
+
+</body>
+</html>
